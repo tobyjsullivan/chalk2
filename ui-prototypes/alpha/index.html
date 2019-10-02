@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<head>
+<title>Prototype: System Designer UI</title>
+  <style>
+  /*
+  color1: #352208 chocolate
+  color2: #E1BB80 mocha
+  color3: #7B6B43 light moss
+  color4: #685634 moss
+  color5: #806443 earth
+  */
+  html {
+    height: 100%;
+  }
+
+  .application {
+    display: grid;
+    grid-template-columns: 260px auto;
+    margin: 0;
+    min-height: 100%;
+  }
+
+  .toolbox {
+    background-color: #352208;
+    color: #fff;
+    padding: 10px;
+  }
+
+  .editor {
+    box-sizing: border-box;
+    border: 1px #685634 solid;
+    padding: 10px;
+    width: 100%;
+    height: 100%;
+  }
+
+  .tools {
+    display: grid;
+    grid-template-columns: 115px 115px;
+    grid-column-gap: 10px;
+    grid-auto-rows: 115px;
+    grid-row-gap: 10px;
+  }
+
+  .tool-service {
+    background-color: #fff;
+    border: 1px solid #E1BB80;
+  }
+  </style>
+</head>
+<body class="application">
+
+<div class="toolbox">
+  <p>Toolbox</p>
+  <div class="tools">
+    <div class="tool-service"></div>
+    <div class="tool-service"></div>
+    <div class="tool-service"></div>
+  </div>
+</div>
+
+<canvas class="editor" id="editor">
+</canvas>
+
+<script>
+function main() {
+  var $editor = document.getElementById("editor");
+  init_editor($editor);
+  var ctx = $editor.getContext("2d");
+  draw_loop($editor, ctx);
+}
+
+function init_editor($editor) {
+  resize_editor($editor);
+}
+
+function resize_editor($editor) {
+  $editor.width = $editor.offsetWidth;
+  $editor.height = $editor.offsetHeight;
+}
+
+function draw_loop($editor, ctx) {
+  resize_editor($editor);
+  draw(ctx);
+  setTimeout(() => draw_loop($editor, ctx), 100);
+}
+
+function draw(ctx) {
+  ctx.beginPath();
+  ctx.rect(80, 60, 115, 115);
+  ctx.stroke();
+}
+
+main();
+</script>
+</body>
