@@ -43,7 +43,7 @@
   }
 
   .tool-service {
-    background-color: #fff;
+    background-color: #7B6B43;
     border: 1px solid #E1BB80;
   }
   </style>
@@ -64,31 +64,184 @@
 
 <script>
 function main() {
-  var $editor = document.getElementById("editor");
-  init_editor($editor);
-  var ctx = $editor.getContext("2d");
-  draw_loop($editor, ctx);
+  var id_generator = idGenerator_new();
+  var state = state_new(id_generator);
+  var $editor = editor_find();
+  editor_init($editor);
+
+  $editor.addEventListener("mousedown", function(event) {
+    editor_handleMouseDown(state, event);
+  });
+
+  $editor.addEventListener("mouseup", function(event) {
+    editor_handleMouseUp(state, event);
+  }); 
+
+  $editor.addEventListener("mousemove", function(event) {
+    editor_handleMouseMove(state, event);
+  });
+
+  var tools = document.getElementsByClassName("tool-service");
+  for (var i = 0; i < tools.length; i++) {
+    var tool = tools.item(i);
+    tool.addEventListener("click", function(event) {
+      tool_handleClick(id_generator, state);
+    });
+  }
+
+  var ctx = editor_loadContext($editor);
+  draw_loop($editor, ctx, state);
 }
 
-function init_editor($editor) {
-  resize_editor($editor);
+function editor_find() {
+  return document.getElementById("editor");
 }
 
-function resize_editor($editor) {
+function editor_init($editor) {
+  editor_refit($editor);
+}
+
+function editor_loadContext(editor) {
+  return editor.getContext("2d");
+}
+
+function editor_handleMouseDown(state, event) {
+  var click_x = event.offsetX;
+  var click_y = event.offsetY;
+  var clicked_obj = state_findTopObject(state, click_x, click_y);
+  if (clicked_obj !== null) {
+    state_startDragging(state, clicked_obj, click_x, click_y);
+  }
+}
+
+function editor_handleMouseMove(state, event) {
+  var click_x = event.offsetX;
+  var click_y = event.offsetY;
+  state_continueDragging(state, click_x, click_y);
+}
+
+function editor_handleMouseUp(state, event) {
+  state_stopDragging(state);
+}
+
+function tool_handleClick(id_generator, state) {
+  var service = service_new(id_generator);
+  state_addService(state, service, 30 + 10 * service.id, 40 + 10 * service.id);
+}
+
+function editor_refit($editor) {
   $editor.width = $editor.offsetWidth;
   $editor.height = $editor.offsetHeight;
 }
 
-function draw_loop($editor, ctx) {
-  resize_editor($editor);
-  draw(ctx);
-  setTimeout(() => draw_loop($editor, ctx), 100);
+function draw_loop($editor, ctx, state) {
+  editor_refit($editor);
+  draw(ctx, state);
+  setTimeout(() => draw_loop($editor, ctx, state), 50);
 }
 
-function draw(ctx) {
-  ctx.beginPath();
-  ctx.rect(80, 60, 115, 115);
-  ctx.stroke();
+function draw(ctx, state) {
+  state.placed_objects.forEach(function(placement) {
+    ctx.beginPath();
+    ctx.fillStyle = '#7B6B43';
+    ctx.fillRect(placement.x, placement.y, placement.width, placement.height);
+    ctx.strokeStyle = '#E1BB80';
+    ctx.rect(placement.x, placement.y, placement.width, placement.height);
+    ctx.stroke();
+  });
+}
+
+function idGenerator_new() {
+  return {
+    next: 1
+  };
+}
+
+function idGenerator_getNext(id_generator) {
+  var next = id_generator.next;
+  id_generator.next = next + 1;
+  return next;
+}
+
+function service_new(id_generator) {
+  return {
+    id: idGenerator_getNext(id_generator)
+  };
+}
+
+function placedObject_forService(service, x, y) {
+  return {
+    service: service,
+    x: x,
+    y: y,
+    width: 115,
+    height: 115
+  };
+}
+
+function placedObject_isIntersecting(placed_object, x, y) {
+  var left = placed_object.x;
+  var top = placed_object.y;
+  var right = left + placed_object.width;
+  var bottom = top + placed_object.height;
+  return left <= x && right >= x && top <= y && bottom >= y;
+}
+
+function state_new() {
+  return {
+    placed_objects: [],
+    dragging_state: null
+  };
+}
+
+function state_findTopObject(state, x, y) {
+  var top_object = null;
+  // state.placed_objects is ordered from bottom to top.
+  for (var i = 0; i < state.placed_objects.length; i++) {
+    var cur_obj = state.placed_objects[i];
+    if (placedObject_isIntersecting(cur_obj, x, y)) {
+      top_object = cur_obj;
+    }
+  }
+  return top_object;
+}
+
+function state_startDragging(state, obj, cursor_x, cursor_y) {
+  var dragging_state = draggingState_new(obj, cursor_x, cursor_y);
+  state.dragging_state = dragging_state;
+}
+
+function state_continueDragging(state, cursor_x, cursor_y) {
+  if (state.dragging_state === null) {
+    return;
+  }
+
+  var delta_x = cursor_x - state.dragging_state.start_x;
+  var delta_y = cursor_y - state.dragging_state.start_y;
+  var new_obj_x = state.dragging_state.object_start_x + delta_x;
+  var new_obj_y = state.dragging_state.object_start_y + delta_y;
+  state.dragging_state.dragging_object.x = new_obj_x;
+  state.dragging_state.dragging_object.y = new_obj_y;
+}
+
+function state_stopDragging(state) {
+  state.dragging_state = null;
+}
+
+function state_addService(state, service, x, y) {
+  state.placed_objects.push(
+    placedObject_forService(service, x, y)
+  );
+}
+
+function draggingState_new(dragging_object, start_x, start_y) {
+  return {
+    dragging_object: dragging_object,
+    start_x: start_x,
+    start_y: start_y,
+    object_start_x: dragging_object.x,
+    object_start_y: dragging_object.y
+  };
 }
 
 main();
