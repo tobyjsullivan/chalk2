@@ -68,6 +68,7 @@ function editor_refit($editor) {
 }
 
 function editor_handleMouseDown(state, event) {
+  state_select(state, event.offsetX, event.offsetY);
   state_startDragging(state, event.offsetX, event.offsetY);
 }
 
@@ -93,7 +94,13 @@ function context_drawService(ctx, service) {
     ctx.beginPath();
     ctx.fillStyle = '#7B6B43';
     ctx.fillRect(service.x, service.y, service.w, service.h);
-    ctx.strokeStyle = '#E1BB80';
+    if (service.selected) {
+      ctx.strokeStyle = '#0000FF';
+      ctx.lineWidth = 2;
+    } else {
+      ctx.strokeStyle = '#E1BB80';
+      ctx.lineWidth = 1;
+    }
     ctx.rect(service.x, service.y, service.w, service.h);
     ctx.stroke();
 }
@@ -104,7 +111,14 @@ function context_drawConnection(ctx, connection) {
   var end_x = connection.b.x + (connection.b.w / 2);
   var end_y = connection.b.y + (connection.b.h / 2);
 
-  ctx.strokeStyle = '#7B6B43';
+  ctx.beginPath();
+  if (connection.selected) {
+    ctx.strokeStyle = '#0000ff';
+    ctx.strokeStyle = 2;
+  } else {
+    ctx.strokeStyle = '#7B6B43';
+    ctx.lineWidth = 1;
+  }
   ctx.moveTo(start_x, start_y);
   ctx.lineTo(end_x, end_y);
   ctx.stroke();
@@ -120,7 +134,8 @@ function state_new() {
   return {
     services: [],
     connections: [],
-    dragging_state: null
+    dragging_state: null,
+    selection_state: null
   };
 }
 
@@ -142,6 +157,11 @@ function state_findTopObject(state, x, y) {
     }
   }
   return top_object;
+}
+
+function state_select(state, mouse_x, mouse_y) {
+  var obj = state_findTopObject(state, mouse_x, mouse_y);
+  state_selectObject(state, obj);
 }
 
 function state_startDragging(state, click_x, click_y) {
@@ -167,6 +187,20 @@ function state_stopDragging(state) {
   state.dragging_state = null;
 }
 
+function state_selectObject(state, obj) {
+  if (state.selection_state !== null) {
+    state.selection_state.obj.selected = false;
+  }
+
+  if (obj === null) {
+    state.selection_state = null;
+    return;
+  }
+
+  obj.selected = true;
+  state.selection_state = selectionState_new(obj);
+}
+
 function draggingState_new(dragging_object, start_x, start_y) {
   return {
     dragging_object: dragging_object,
@@ -177,12 +211,19 @@ function draggingState_new(dragging_object, start_x, start_y) {
   };
 }
 
+function selectionState_new(selected_object) {
+  return {
+    obj: selected_object
+  };
+}
+
 function service_new(x, y) {
   return {
     x: x,
     y: y,
     w: 115,
-    h: 115
+    h: 115,
+    selected: false
   };
 }
 
@@ -197,7 +238,8 @@ function service_isIntersecting(placed_object, x, y) {
 function connection_new(service_a, service_b) {
   return {
     a: service_a,
-    b: service_b
+    b: service_b,
+    selected: false
   };
 }
 
