@@ -67,19 +67,7 @@ function main() {
   var id_generator = idGenerator_new();
   var state = state_new(id_generator);
   var $editor = editor_find();
-  editor_init($editor);
-
-  $editor.addEventListener("mousedown", function(event) {
-    editor_handleMouseDown(state, event);
-  });
-
-  $editor.addEventListener("mouseup", function(event) {
-    editor_handleMouseUp(state, event);
-  }); 
-
-  $editor.addEventListener("mousemove", function(event) {
-    editor_handleMouseMove(state, event);
-  });
+  editor_init($editor, state);
 
   var tools = document.getElementsByClassName("tool-service");
   for (var i = 0; i < tools.length; i++) {
@@ -97,8 +85,20 @@ function editor_find() {
   return document.getElementById("editor");
 }
 
-function editor_init($editor) {
+function editor_init($editor, state) {
   editor_refit($editor);
+
+  editor.addEventListener("mousedown", function(event) {
+    editor_handleMouseDown(state, event);
+  });
+
+  editor.addEventListener("mouseup", function(event) {
+    editor_handleMouseUp(state, event);
+  });
+
+  editor.addEventListener("mousemove", function(event) {
+    editor_handleMouseMove(state, event);
+  });
 }
 
 function editor_loadContext(editor) {
