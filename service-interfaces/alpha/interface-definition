@@ -1,0 +1,71 @@
+service PhotoSourceService {
+  rpc subscribe({}) -> stream { 
+    png: bytes,
+    filename: string,
+    user: uuid
+  }
+}
+
+service CommentService {
+  rpc getComments({
+    threadId: uuid
+  }) -> {
+    comments: [{
+      commentId: uuid,
+      timestamp: int64,
+      author: uuid,
+      body: string,
+      replyTo: optional uuid
+    }]
+  }
+
+  rpc postComment({
+    threadId: uuid,
+    replyTo: optional uuid,
+    author: uuid,
+    body: string
+  }) -> {
+    commentId: uuid
+  }
+}
+
+# Canonicalised form:
+- Sort services lexicographically
+- Sort rpcs lexicographically
+- Sort fields lexicographically
+- Remove whitespace around curly braces.
+- Strip whitspace around method params
+- Seperate rpc definitions and service definitions by semicolons
+
+service CommentService{rpc getComment({threadId:uuid})->{comments[{commentId:uuid,timestamp:int64,author:uuid,body:string,replyTo:optional uuid}]};rpc postComments({threadId:uuid,replyTo:optional uuid,author:uuid,body:string})->{commentId:uuid}};service PhotoSourceService{rpc subscribe({})->stream{filename:string,png:bytes,user:uuid}}
+
+# Alternatively, don't strip whitespace. Require it (abolish commas/semicolons)
+
+service CommentService {
+  rpc getComment({
+    threadId: uuid
+  }) -> {
+    comments:[{
+      author: uuid
+      body: string
+      commentId: uuid
+      replyTo: optional uuid
+      timestamp: int64
+    }]
+  }
+  rpc postComment({
+    author: uuid
+    body: string
+    replyTo: uuid
+    threadId: uuid
+  }) -> {
+    commentId: uuid
+  }
+}
+service PhotoSourceService {
+  rpc subscribe({}) -> stream {
+    filename: string
+    png: bytes
+    uploader: uuid
+  }
+}
