@@ -197,11 +197,14 @@ function state_continueDragging(state, mouse_x, mouse_y) {
 
 function state_stopDragging(state) {
   var dragging_state = state.dragging_state;
+  if (dragging_state === null) {
+    return;
+  }
   var action = dragging_state.dragging_object;
   var end_obj = state_findTopObject(state, action.end_x, action.end_y);
 
   state.dragging_state = null;
-  if (end_obj === null) {
+  if (end_obj === null || action.start_object === end_obj) {
     return;
   }
 
