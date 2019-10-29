@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+#editor {
+  width: 100%;
+  height: 100%;
+}
+</style>
+
+<body>
+
+<canvas id="editor"></canvas>
+
+<script>
+function main() {
+  var state = state_new();
+  var editor = page_findEditor();
+  editor_init(editor, state);
+  var ctx = editor_loadContext(editor);
+
+  var svc_a = service_new(30, 30);
+  state_addService(state, svc_a);
+  var svc_b = service_new(80, 40);
+  state_addService(state, svc_b);
+  var svc_c = service_new(70, 100);
+  state_addService(state, svc_c);
+  var conn1 = connection_new(svc_a, svc_b);
+  state_addConnection(state, conn1);
+  var conn2 = connection_new(svc_b, svc_c);
+  state_addConnection(state, conn2);
+
+  editor_drawLoop(editor, ctx, state);
+}
+
+function page_findEditor() {
+  return document.getElementById("editor");
+}
+
+function editor_init(editor, state) {
+  editor_refit(editor);
+
+  editor.addEventListener("mousedown", function(event) {
+    editor_handleMouseDown(state, event);
+  });
+
+  editor.addEventListener("mouseup", function(event) {
+    editor_handleMouseUp(state, event);
+  }); 
+
+  editor.addEventListener("mousemove", function(event) {
+    editor_handleMouseMove(state, event);
+  });
+}
+
+function editor_loadContext(editor) {
+  return editor.getContext("2d");
+}
+
+function editor_refit($editor) {
+  $editor.width = $editor.offsetWidth;
+  $editor.height = $editor.offsetHeight;
+}
+
+function editor_handleMouseDown(state, event) {
+  state_select(state, event.offsetX, event.offsetY);
+  state_startDragging(state, event.offsetX, event.offsetY);
+}
+
+function editor_handleMouseUp(state, event) {
+  state_stopDragging(state);
+}
+
+function editor_handleMouseMove(state, event) {
+  state_continueDragging(state, event.offsetX, event.offsetY);
+}
+
+function context_drawState(context, state) {
+  for (var i = 0; i < state.connections.length; i++) {
+    context_drawConnection(context, state.connections[i]);
+  }
+
+  for (var i = 0; i < state.services.length; i++) {
+    context_drawService(context, state.services[i]);
+  }
+}
+
+function context_drawService(ctx, service) {
+    ctx.beginPath();
+    ctx.fillStyle = '#7B6B43';
+    ctx.fillRect(service.x, service.y, service.w, service.h);
+    if (service.selected) {
+      ctx.strokeStyle = '#0000FF';
+      ctx.lineWidth = 2;
+    } else {
+      ctx.strokeStyle = '#E1BB80';
+      ctx.lineWidth = 1;
+    }
+    ctx.rect(service.x, service.y, service.w, service.h);
+    ctx.stroke();
+}
+
+function context_drawConnection(ctx, connection) {
+  var start_x = interface_getX(connection.a);
+  var start_y = interface_getY(connection.a);
+  var end_x = interface_getX(connection.b);
+  var end_y = interface_getY(connection.b);
+
+  ctx.beginPath();
+  if (connection.selected) {
+    ctx.strokeStyle = '#0000ff';
+    ctx.strokeStyle = 2;
+  } else {
+    ctx.strokeStyle = '#7B6B43';
+    ctx.lineWidth = 1;
+  }
+  ctx.moveTo(start_x, start_y);
+  ctx.lineTo(end_x, end_y);
+  ctx.stroke();
+
+  // Draw interface circles
+  context_drawInterface(ctx, start_x, start_y);
+  context_drawInterface(ctx, end_x, end_y);
+}
+
+function context_drawInterface(ctx, x, y) {
+  ctx.fillStyle = '#7B6B43';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(x, y, 5, 0, 2 * Math.PI);
+  ctx.fill();
+}
+
+function editor_drawLoop($editor, ctx, state) {
+  editor_refit($editor);
+  context_drawState(ctx, state);
+  setTimeout(() => editor_drawLoop($editor, ctx, state), 50);
+}
+
+function state_new() {
+  return {
+    services: [],
+    connections: [],
+    dragging_state: null,
+    selection_state: null
+  };
+}
+
+function state_addService(state, service) {
+  state.services.push(service);
+}
+
+function state_addConnection(state, connection) {
+  state.connections.push(connection);
+}
+
+function state_findTopObject(state, x, y) {
+  var top_object = null;
+  // state.placed_objects is ordered from bottom to top.
+  for (var i = 0; i < state.services.length; i++) {
+    var cur_obj = state.services[i];
+    if (service_isIntersecting(cur_obj, x, y)) {
+      top_object = cur_obj;
+    }
+  }
+  return top_object;
+}
+
+function state_select(state, mouse_x, mouse_y) {
+  var obj = state_findTopObject(state, mouse_x, mouse_y);
+  state_selectObject(state, obj);
+}
+
+function state_startDragging(state, click_x, click_y) {
+  var top_obj = state_findTopObject(state, click_x, click_y);
+  if (top_obj === null) {
+    return;
+  }
+  state.dragging_state = draggingState_new(top_obj, click_x, click_y);
+}
+
+function state_continueDragging(state, mouse_x, mouse_y) {
+  if (state.dragging_state === null) {
+    return;
+  }
+
+  var delta_x = mouse_x - state.dragging_state.start_x;
+  var delta_y = mouse_y - state.dragging_state.start_y;
+  state.dragging_state.dragging_object.x = state.dragging_state.object_start_x + delta_x;
+  state.dragging_state.dragging_object.y = state.dragging_state.object_start_y + delta_y;
+}
+
+function state_stopDragging(state) {
+  state.dragging_state = null;
+}
+
+function state_selectObject(state, obj) {
+  if (state.selection_state !== null) {
+    state.selection_state.obj.selected = false;
+  }
+
+  if (obj === null) {
+    state.selection_state = null;
+    return;
+  }
+
+  obj.selected = true;
+  state.selection_state = selectionState_new(obj);
+}
+
+function draggingState_new(dragging_object, start_x, start_y) {
+  return {
+    dragging_object: dragging_object,
+    start_x: start_x,
+    start_y: start_y,
+    object_start_x: dragging_object.x,
+    object_start_y: dragging_object.y
+  };
+}
+
+function selectionState_new(selected_object) {
+  return {
+    obj: selected_object
+  };
+}
+
+function service_new(x, y) {
+  return {
+    x: x,
+    y: y,
+    w: 115,
+    h: 115,
+    selected: false,
+    interfaces: []
+  };
+}
+
+function service_isIntersecting(placed_object, x, y) {
+  var left = placed_object.x;
+  var top = placed_object.y;
+  var right = left + placed_object.w;
+  var bottom = top + placed_object.h;
+  return left <= x && right >= x && top <= y && bottom >= y;
+}
+
+function service_createInterface(service) {
+  if (service.interfaces.length >= 4) {
+    // No spots left.
+    return null;
+  }
+
+  var iface = interface_new(service);
+  service.interfaces.push(iface);
+  return iface;
+}
+
+function interface_new(service) {
+  return {
+    parent: service
+  };
+}
+
+function interface_getSide(iface) {
+  var parent = iface.parent;
+  var i = 0;
+  for (; i < 4; i++) {
+    if (parent.interfaces[i] === iface) {
+      break;
+    }
+  }
+
+  switch (i) {
+    case 0: return 'BOTTOM';
+    case 1: return 'LEFT';
+    case 2: return 'TOP';
+    case 3: return 'RIGHT';
+    default: return null;
+  }
+}
+
+function interface_getX(iface) {
+  var parent = iface.parent;
+  var side = interface_getSide(iface);
+  var pLeft = parent.x;
+  if (side === 'LEFT') {
+    return pLeft;
+  }
+  var pRight = parent.x + parent.w;
+  if (side === 'RIGHT') {
+    return pRight;
+  }
+
+  return (pLeft + pRight) / 2;
+}
+
+function interface_getY(iface) {
+  var parent = iface.parent;
+  var side = interface_getSide(iface);
+  var pTop = parent.y;
+  if (side === 'TOP') {
+    return pTop;
+  }
+  var pBottom = parent.y + parent.h;
+  if (side === 'BOTTOM') {
+    return pBottom;
+  }
+
+  return (pTop + pBottom) / 2;
+}
+
+function connection_new(service_a, service_b) {
+  var iface_a = service_createInterface(service_a);
+  if (iface_a === null) {
+    throw 'No interfaces left on service_a';
+  }
+  var iface_b = service_createInterface(service_b);
+  if (iface_b === null) {
+    throw 'No interfaces left on service_b';
+  }
+
+  return {
+    a: iface_a,
+    b: iface_b,
+    selected: false
+  };
+}
+
+main();
+</script>
+
+</body>
+
+</html>
