@@ -1,0 +1,13 @@
+.Page {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 260px auto;
+}
+
+.Page__Sidebar {
+}
+
+.Page__Content {
+  min-height: 100vh;
+  background-color: #cccccc;
+}
